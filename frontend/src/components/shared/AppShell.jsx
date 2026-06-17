@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import useHunterStore from '../../store/hunterStore'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -19,6 +20,9 @@ const AppShell = () => {
 
   const handleSignOut = () => {
     localStorage.removeItem('token')
+    // clear hunter store
+    const setHunter = useHunterStore.getState().setHunter
+    setHunter(null)
     navigate('/awakening', { replace: true })
   }
 
@@ -49,6 +53,34 @@ const AppShell = () => {
               Sign out
             </button>
           </div>
+        </div>
+
+        <div className="hidden items-center justify-between gap-6 border-t border-system-border pt-4 md:flex">
+          <nav className="flex flex-wrap items-center gap-3">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `rounded-2xl px-4 py-2 text-sm transition ${
+                    isActive
+                      ? 'bg-system-blue text-slate-950 shadow-[0_0_20px_rgba(0,212,255,0.3)]'
+                      : 'text-slate-200 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="hidden rounded-xl border border-system-blue bg-system-blue/10 px-3 py-2 text-sm text-system-blue transition hover:bg-system-blue/20 md:inline-flex"
+          >
+            Sign out
+          </button>
         </div>
 
         <div className={`${openMenu ? 'block' : 'hidden'} mt-4 md:hidden`}>

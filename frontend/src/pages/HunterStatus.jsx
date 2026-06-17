@@ -1,29 +1,46 @@
 import React, { useEffect, useState } from 'react'
-import { getHunterStatus, getLeaderboard } from '../api/hunter'
+import { getLeaderboard, getHunterStatus } from '../api/hunter'
 import SystemPanel from '../components/system/SystemPanel'
+import useHunterStore from '../store/hunterStore'
 
 const HunterStatus = () => {
-  const [hunter, setHunter] = useState(null)
+  const hunter = useHunterStore((s) => s.hunter)
+  const setHunter = useHunterStore((s) => s.setHunter)
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState(null)
 
   useEffect(() => {
-    const loadStatus = async () => {
+    let mounted = true
+
+    const loadData = async () => {
+      setLoading(true)
       try {
-        const [statusRes, leaderboardRes] = await Promise.all([getHunterStatus(), getLeaderboard()])
+        const [statusRes, leaderboardRes] = await Promise.all([
+          getHunterStatus(),
+          getLeaderboard(),
+        ])
+
+        if (!mounted) return
         setHunter(statusRes.data.hunter)
         setLeaderboard(leaderboardRes.data.leaderboard)
+        setLastUpdated(new Date())
       } catch (error) {
-        console.error('Failed to load hunter status', error)
+        console.error('Failed to load hunter status and leaderboard', error)
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
 
-    loadStatus()
-  }, [])
+    loadData()
+    const interval = window.setInterval(loadData, 20000)
+    return () => {
+      mounted = false
+      window.clearInterval(interval)
+    }
+  }, [setHunter])
 
-  if (loading) {
+  if (loading || !hunter) {
     return (
       <div className="min-h-screen bg-system-dark p-6 text-white">
         <div className="rounded-3xl border border-system-border bg-[#061323] p-8 text-center text-slate-300">Loading hunter profile…</div>
@@ -34,7 +51,9 @@ const HunterStatus = () => {
   if (!hunter) {
     return (
       <div className="min-h-screen bg-system-dark p-6 text-white">
-        <div className="rounded-3xl border border-system-border bg-[#061323] p-8 text-center text-slate-300">Hunter profile not found.</div>
+        <div className="rounded-3xl border border-system-border bg-[#061323] p-8 text-center text-slate-300">
+          Hunter profile not loaded yet. Please wait while we sync your stats.
+        </div>
       </div>
     )
   }
@@ -65,15 +84,42 @@ const HunterStatus = () => {
             </div>
           </div>
 
-          <div className="mt-6 rounded-3xl border border-system-border bg-[#061323] p-5">
-            <div className="flex items-center justify-between text-sm text-slate-300">
-              <span>XP Progress</span>
-              <span>{hunter.xp} / {hunter.xpToNextLevel}</span>
+          <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="rounded-3xl border border-system-border bg-[#061323] p-5">
+              <div className="flex items-center justify-between text-sm text-slate-300">
+                <span>XP Progress</span>
+                <span>{hunter.xp} / {hunter.xpToNextLevel}</span>
+              </div>
+              <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-800">
+                <div className="h-full rounded-full bg-system-blue" style={{ width: `${Math.min(100, Math.round((hunter.xp / Math.max(hunter.xpToNextLevel, 1)) * 100))}%` }} />
+              </div>
             </div>
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-800">
-              <div className="h-full rounded-full bg-system-blue" style={{ width: `${Math.min(100, Math.round((hunter.xp / Math.max(hunter.xpToNextLevel, 1)) * 100))}%` }} />
-            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true)
+                try {
+                  const statusRes = await getHunterStatus()
+                  setHunter(statusRes.data.hunter)
+                  setLastUpdated(new Date())
+                } catch (error) {
+                  console.error('Failed to refresh hunter status', error)
+                } finally {
+                  setLoading(false)
+                }
+              }}
+              className="self-start rounded-3xl bg-system-blue px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-system-blue/90"
+            >
+              Refresh Stats
+            </button>
           </div>
+
+          {lastUpdated && (
+            <div className="rounded-3xl border border-system-border bg-[#061323] p-4 text-sm text-slate-400">
+              Last synced: {lastUpdated.toLocaleTimeString()}
+            </div>
+          )}
         </SystemPanel>
 
         <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">

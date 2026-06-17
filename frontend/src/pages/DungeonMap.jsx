@@ -6,20 +6,32 @@ import SystemPanel from '../components/system/SystemPanel'
 const DungeonMap = () => {
   const [dungeons, setDungeons] = useState([])
   const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState(null)
 
   useEffect(() => {
+    let mounted = true
+
     const loadDungeons = async () => {
+      setLoading(true)
       try {
         const response = await getDungeons()
-        setDungeons(response.data.dungeons)
+        if (mounted) {
+          setDungeons(response.data.dungeons)
+          setLastUpdated(new Date())
+        }
       } catch (error) {
         console.error('Failed to load dungeons', error)
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
 
     loadDungeons()
+    const interval = window.setInterval(loadDungeons, 20000)
+    return () => {
+      mounted = false
+      window.clearInterval(interval)
+    }
   }, [])
 
   return (

@@ -1,28 +1,44 @@
 import React, { useEffect, useState } from 'react'
 import SystemPanel from '../components/system/SystemPanel'
-import { getHunterStatus } from '../api/hunter'
+import useHunterStore from '../store/hunterStore'
 import { getDailyQuests } from '../api/quests'
+import { getHunterStatus } from '../api/hunter'
 
 const Dashboard = () => {
-  const [hunter, setHunter] = useState(null)
+  const hunter = useHunterStore((s) => s.hunter)
+  const setHunter = useHunterStore((s) => s.setHunter)
   const [dailyQuests, setDailyQuests] = useState([])
   const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState(null)
 
   useEffect(() => {
+    let mounted = true
     const loadData = async () => {
+      setLoading(true)
       try {
-        const [hunterRes, questsRes] = await Promise.all([getHunterStatus(), getDailyQuests()])
-        setHunter(hunterRes.data.hunter)
-        setDailyQuests(questsRes.data.quests)
+        const [statusRes, questsRes] = await Promise.all([
+          getHunterStatus(),
+          getDailyQuests(),
+        ])
+
+        if (!mounted) return
+        setHunter(statusRes.data.hunter)
+        setDailyQuests(questsRes.data.quests || [])
+        setLastUpdated(new Date())
       } catch (error) {
-        console.error('Failed to load dashboard data', error)
+        console.error('Failed to refresh dashboard data', error)
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
 
     loadData()
-  }, [])
+    const interval = window.setInterval(loadData, 15000)
+    return () => {
+      mounted = false
+      window.clearInterval(interval)
+    }
+  }, [setHunter])
 
   const rank = hunter?.rank || 'D'
   const level = hunter?.level || 1
@@ -37,11 +53,11 @@ const Dashboard = () => {
   ]
 
   const stats = [
-    { label: 'STR', value: 14, color: 'bg-[#39FF14]' },
-    { label: 'AGI', value: 18, color: 'bg-[#00D4FF]' },
-    { label: 'INT', value: 12, color: 'bg-[#A855F7]' },
-    { label: 'VIT', value: 16, color: 'bg-[#F97316]' },
-    { label: 'SENSE', value: 10, color: 'bg-[#EAB308]' },
+    { label: 'STR', value: hunter?.statStrength || 0, color: 'bg-[#39FF14]' },
+    { label: 'AGI', value: hunter?.statAgility || 0, color: 'bg-[#00D4FF]' },
+    { label: 'INT', value: hunter?.statIntelligence || 0, color: 'bg-[#A855F7]' },
+    { label: 'VIT', value: hunter?.statVitality || 0, color: 'bg-[#F97316]' },
+    { label: 'SENSE', value: hunter?.statSense || 0, color: 'bg-[#EAB308]' },
   ]
 
   const shadowArmy = [
@@ -68,19 +84,44 @@ const Dashboard = () => {
               <h1 className="text-4xl font-semibold text-white">Hunter Dashboard</h1>
               <p className="mt-2 text-slate-400">Welcome back, Shadow Hunter. Your army grows stronger with every completed quest.</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <button
+                type="button"
+                onClick={async () => {
+                  setLoading(true)
+                  try {
+                    const statusRes = await getHunterStatus()
+                    setHunter(statusRes.data.hunter)
+                    setLastUpdated(new Date())
+                  } catch (error) {
+                    console.error('Failed to refresh stats', error)
+                  } finally {
+                    setLoading(false)
+                  }
+                }}
+                className="rounded-3xl border border-system-blue bg-system-blue/10 px-4 py-2 text-sm text-system-blue transition hover:bg-system-blue/20"
+              >
+                Refresh Stats
+              </button>
               <div className="rounded-3xl border border-system-border bg-[#061323] p-4 text-center">
-                <p className="text-sm uppercase text-slate-400">Rank</p>
-                <p className="mt-2 text-2xl font-semibold text-system-blue">{rank}</p>
+                <p className="text-sm uppercase text-slate-400">Last refresh</p>
+                <p className="mt-2 text-base text-white">{lastUpdated ? lastUpdated.toLocaleTimeString() : 'Pending'}</p>
               </div>
-              <div className="rounded-3xl border border-system-border bg-[#061323] p-4 text-center">
-                <p className="text-sm uppercase text-slate-400">Level</p>
-                <p className="mt-2 text-2xl font-semibold text-white">{level}</p>
-              </div>
-              <div className="rounded-3xl border border-system-border bg-[#061323] p-4 text-center">
-                <p className="text-sm uppercase text-slate-400">Coins</p>
-                <p className="mt-2 text-2xl font-semibold text-system-gold">{coins.toLocaleString()}</p>
-              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <div className="rounded-3xl border border-system-border bg-[#061323] p-4 text-center">
+              <p className="text-sm uppercase text-slate-400">Rank</p>
+              <p className="mt-2 text-2xl font-semibold text-system-blue">{rank}</p>
+            </div>
+            <div className="rounded-3xl border border-system-border bg-[#061323] p-4 text-center">
+              <p className="text-sm uppercase text-slate-400">Level</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{level}</p>
+            </div>
+            <div className="rounded-3xl border border-system-border bg-[#061323] p-4 text-center">
+              <p className="text-sm uppercase text-slate-400">Coins</p>
+              <p className="mt-2 text-2xl font-semibold text-system-gold">{coins.toLocaleString()}</p>
             </div>
           </div>
 

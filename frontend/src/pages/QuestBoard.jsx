@@ -11,20 +11,32 @@ const QuestBoard = () => {
   const [query, setQuery] = useState('')
   const [quests, setQuests] = useState([])
   const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState(null)
 
   useEffect(() => {
+    let mounted = true
+
     const loadQuests = async () => {
+      setLoading(true)
       try {
         const response = await getQuests()
-        setQuests(response.data.quests || [])
+        if (mounted) {
+          setQuests(response.data.quests || [])
+          setLastUpdated(new Date())
+        }
       } catch (error) {
         console.error('Unable to fetch quests', error)
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
 
     loadQuests()
+    const interval = window.setInterval(loadQuests, 20000)
+    return () => {
+      mounted = false
+      window.clearInterval(interval)
+    }
   }, [])
 
   const filteredQuests = useMemo(() => {
@@ -92,6 +104,24 @@ const QuestBoard = () => {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={async () => {
+                  setLoading(true)
+                  try {
+                    const response = await getQuests()
+                    setQuests(response.data.quests || [])
+                    setLastUpdated(new Date())
+                  } catch (error) {
+                    console.error('Unable to refresh quests', error)
+                  } finally {
+                    setLoading(false)
+                  }
+                }}
+                className="rounded-3xl bg-system-blue px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-system-blue/90"
+              >
+                Refresh
+              </button>
               <label className="inline-flex items-center gap-3 rounded-3xl border border-system-border bg-[#071526] px-4 py-2 text-sm text-slate-300">
                 <span>Search</span>
                 <input
@@ -114,6 +144,10 @@ const QuestBoard = () => {
               </select>
             </div>
           </div>
+
+          {lastUpdated && (
+            <div className="mt-3 text-sm text-slate-400">Last synced: {lastUpdated.toLocaleTimeString()}</div>
+          )}
         </section>
 
         {loading ? (

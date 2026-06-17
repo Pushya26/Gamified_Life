@@ -7,6 +7,7 @@ import questsRoutes from './routes/quests.js'
 import dungeonsRoutes from './routes/dungeons.js'
 import shadowsRoutes from './routes/shadows.js'
 import shopRoutes from './routes/shop.js'
+import errorHandler from './middleware/errorHandler.js'
 
 dotenv.config()
 
@@ -25,7 +26,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-const port = process.env.PORT || 4000
-app.listen(port, () => {
-  console.log(`Backend running on http://localhost:${port}`)
-})
+// centralized error handling
+app.use(errorHandler)
+
+export default app

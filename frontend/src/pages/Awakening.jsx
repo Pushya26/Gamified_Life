@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { login, register } from '../api/auth'
+import useHunterStore from '../store/hunterStore'
 
 const initialForm = {
   username: '',
@@ -15,6 +16,7 @@ const Awakening = () => {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const token = localStorage.getItem('token')
+  const setHunter = useHunterStore((s) => s.setHunter)
 
   if (token) {
     return <Navigate to="/" replace />
@@ -42,6 +44,11 @@ const Awakening = () => {
 
       if (tokenValue) {
         localStorage.setItem('token', tokenValue)
+      }
+
+      // populate hunter store immediately so UI updates without reload
+      if (response.data?.hunter) {
+        setHunter(response.data.hunter)
       }
 
       navigate('/', { replace: true })
