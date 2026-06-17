@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  username     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  hunter       Hunter?
+}
+
+model Hunter {
+  id                   String             @id @default(cuid())
+  user                 User               @relation(fields: [userId], references: [id])
+  userId               String             @unique
+  name                 String
+  level                Int                @default(1)
+  xp                   Int                @default(0)
+  xpToNextLevel        Int                @default(100)
+  rank                 Rank               @default(E)
+  jobClass             String             @default("Beginner")
+  statStrength         Int                @default(0)
+  statAgility          Int                @default(0)
+  statIntelligence     Int                @default(0)
+  statVitality         Int                @default(0)
+  statSense            Int                @default(0)
+  statPointsAvailable  Int                @default(0)
+  totalQuestsCompleted Int                @default(0)
+  totalDungeonsCleared Int                @default(0)
+  streakDays           Int                @default(0)
+  longestStreak        Int                @default(0)
+  coins                Int                @default(0)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  quests               Quest[]
+  dungeons             Dungeon[]
+  shadows              Shadow[]
+  shopItems            ShopItem[]
+  notifications        NotificationLog[]
+}
+
+enum Rank {
+  E
+  D
+  C
+  B
+  A
+  S
+  NATIONAL
+}
+
+enum Difficulty {
+  E
+  D
+  C
+  B
+  A
+  S
+}
+
+enum QuestStatus {
+  pending
+  active
+  completed
+  failed
+}
+
+enum Recurrence {
+  none
+  daily
+  weekly
+}
+
+enum StatType {
+  STR
+  AGI
+  INT
+  VIT
+  SENSE
+}
+
+model Quest {
+  id          String      @id @default(cuid())
+  hunter      Hunter      @relation(fields: [hunterId], references: [id])
+  hunterId    String
+  title       String
+  description String?
+  difficulty  Difficulty  @default(E)
+  status      QuestStatus @default(pending)
+  xpReward    Int
+  coinReward  Int
+  statType    StatType
+  dueDate     DateTime?
+  completedAt DateTime?
+  isDaily     Boolean     @default(false)
+  recurrence  Recurrence  @default(none)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Dungeon {
+  id             String        @id @default(cuid())
+  hunter         Hunter        @relation(fields: [hunterId], references: [id])
+  hunterId       String
+  title          String
+  description    String?
+  rank           Rank
+  status         DungeonStatus @default(active)
+  totalTasks     Int           @default(0)
+  completedTasks Int           @default(0)
+  xpReward       Int
+  deadline       DateTime?
+  createdAt      DateTime      @default(now())
+  clearedAt      DateTime?
+  tasks          DungeonTask[]
+}
+
+enum DungeonStatus {
+  active
+  cleared
+}
+
+model DungeonTask {
+  id          String   @id @default(cuid())
+  dungeon     Dungeon  @relation(fields: [dungeonId], references: [id])
+  dungeonId   String
+  title       String
+  isCompleted Boolean  @default(false)
+  orderIndex  Int      @default(0)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model Shadow {
+  id          String   @id @default(cuid())
+  hunter      Hunter   @relation(fields: [hunterId], references: [id])
+  hunterId    String
+  habitName   String
+  streakCount Int      @default(0)
+  isAwakened  Boolean  @default(false)
+  icon        String?
+  lastChecked DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model ShopItem {
+  id           String   @id @default(cuid())
+  hunter       Hunter   @relation(fields: [hunterId], references: [id])
+  hunterId     String
+  title        String
+  description  String?
+  costCoins    Int
+  isPurchased  Boolean  @default(false)
+  purchasedAt  DateTime?
+  createdAt    DateTime @default(now())
+}
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  hunter    Hunter   @relation(fields: [hunterId], references: [id])
+  hunterId  String
+  type      String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
